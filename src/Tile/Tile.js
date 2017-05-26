@@ -1,6 +1,4 @@
 import React from 'react'
-import { Grid, Row } from 'react-bootstrap'
-import { rotateTileCW } from '../Tiles/tile-utils'
 
 const CELL_SIZE = 80
 const BORDER_COLORS = {
@@ -12,17 +10,12 @@ const ROOM_COLORS = [
   '#dfd',
   '#dff',
   '#ffd',
-  '#fdf',
+  '#fdd',
 ]
 const STREET_COLORS = [
-  '#ccc',
-  '#d8d8d8',
-  '#cfcfcf',
-  '#dadada',
-  '#d2d2d2',
-  '#ddd',
-  '#d5d5d5',
-  '#dfdfdf',
+  '#bbb',
+  '#aaa',
+  '#ddd'
 ]
 const EXIT_ICONS = {
   north: 'glyphicon-arrow-up',
@@ -31,22 +24,66 @@ const EXIT_ICONS = {
   west: 'glyphicon-arrow-left',
 }
 
-const Tile = ({ layout, rotate = 0 }) => {
+const Tile = ({ layout }) => {
+  const cardinals = ['north', 'east', 'south', 'west']
+  const markSidewalks = cell => {
+    // let isSidewalk = false
+    let { coords: [ x, y ] } = cell
+    const checkCorner = {
+      nw: x > 0 && y > 0 && x % 3 === 0 && y % 3 === 0 ? `${x - 1},${y - 1}` : false,
+      ne: x > 0 && y < 8 && x % 3 === 0 && y % 3 === 2 ? `${x - 1},${y + 1}` : false,
+      sw: x < 8 && y > 0 && x % 3 === 2 && y % 3 === 0 ? `${x + 1},${y - 1}` : false,
+      se: x < 8 && y < 8 && x % 3 === 2 && y % 3 === 2 ? `${x + 1},${y + 1}` : false,
+    }
+    const [ isCorner ] = Object.keys(checkCorner).filter(direction => checkCorner[direction])
+    if (cardinals.some((direction, i) => cell[direction] === 'wall')) {
+      // isSidewalk = true
+      return [STREET_COLORS[2]]
+    } else if (isCorner) {
+      const [ newX, newY ] = checkCorner[isCorner].split(',')
+      if (cardinals.some(direction => layout[newX][newY][direction] === 'wall')) {
+        // isSidewalk = true
+        return [STREET_COLORS[2]]
+      }
+    } else if (/*!isSidewalk && */[x, y].map(v => [2, 6].includes(v))) {
+      return markCrosswalks(cell)
+    }
+    return STREET_COLORS[cell.street % 2]
+  }
+
+  let addToStyle = {}
+
+  function markCrosswalks(cell) {
+    let { coords: [ x, y ] } = cell
+    const streetColor = STREET_COLORS[cell.street % 2]
+
+    if ([2, 6].includes(x)) {
+      addToStyle.backgroundSize = '33.3% 100%'
+      return `linear-gradient(to right, ${streetColor}, ${streetColor} 25%, #f2f2f2 25%, #f2f2f2 75%, ${streetColor} 75%)`
+    } else if ([2, 6].includes(y)) {
+      addToStyle.backgroundSize = '100% 33.3%'
+      return `linear-gradient(to bottom, ${streetColor}, ${streetColor} 25%, #f2f2f2 25%, #f2f2f2 75%, ${streetColor} 75%)`
+    }
+    return streetColor
+  }
+
   const renderCell = cell => {
     const bgColor = cell.hasOwnProperty('room') ? (
       ROOM_COLORS[cell.room]
     ) : cell.hasOwnProperty('street') ? (
-      STREET_COLORS[cell.street]
+      markSidewalks(cell)
     ) : (
       'initial'
     )
+
     let hasExit = false
     const renderIcon = () => {
       let iconClass = 'glyphicon'
+
       Object.keys(cell).forEach(key => {
         if (cell[key] === 'door') {
           hasExit = true
-          iconClass+= ` ${EXIT_ICONS[key]}`
+          iconClass+= ` ${ EXIT_ICONS[key] }`
         }
       })
       if (hasExit) {
@@ -62,21 +99,22 @@ const Tile = ({ layout, rotate = 0 }) => {
       return null
     }
     const style = {
-      padding: `${CELL_SIZE * .39}px ${CELL_SIZE * .49}px`,
-      lineHeight: `${CELL_SIZE}px`,
+      padding: `${ CELL_SIZE * .39 }px ${ CELL_SIZE * .49 }px`,
+      lineHeight: `${ CELL_SIZE }px`,
       maxWidth: CELL_SIZE,
       maxHeight: CELL_SIZE,
       position: 'relative',
-      backgroundColor: bgColor,
+      background: bgColor,
       border: '3px solid transparent',
       borderTopColor: BORDER_COLORS[cell.north],
       borderRightColor: BORDER_COLORS[cell.east],
       borderBottomColor: BORDER_COLORS[cell.south],
       borderLeftColor: BORDER_COLORS[cell.west],
+      ...addToStyle,
     }
     return (
-      <span key={`col-${cell.coords[1]}`} style={style}>
-         <span style={{fontSize: '1px', color: 'rgba(1,1,1,0)'}}>
+      <span key={`col-${ cell.coords[1] }`} style={style}>
+         <span style={{ fontSize: '1px', color: 'rgba(255,255,255,0)' }}>
            { '.' }
            { renderIcon() }
          </span>
@@ -85,15 +123,15 @@ const Tile = ({ layout, rotate = 0 }) => {
   }
 
   return (
-    <Grid style={{ paddingTop: '5px'}}>
+    <span style={{ margin: '4px 2px', width: '762px', float: 'left' }}>
       {
-        rotateTileCW(layout, rotate).map((row, i) => (
-          <Row key={`row-${i}`} style={{ margin: '-1px 0'}}>
+        layout.map((row, i) => (
+          <div key={`row-${i}`} style={{ margin: '-1px 0' }}>
             { row.map(renderCell) }
-          </Row>
+          </div>
         ))
       }
-    </Grid>
+    </span>
   )
 }
 

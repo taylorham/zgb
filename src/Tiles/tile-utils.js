@@ -1,5 +1,5 @@
-export const buildTile = ({ vertical, horizontal }) => {
-  return markStreets(markRooms(wallsHorizontal(wallsVertical(emptyTile(), vertical), horizontal)))
+export const buildTile = (walls, rotation = 0) => {
+  return markStreets(markRooms(rotateTile(buildWalls(walls), rotation)))
 }
 
 function emptyTile() {
@@ -19,40 +19,17 @@ function emptyTile() {
     tileMatrix.push(tileRow)
   }
 
-  return tileMatrix
+  return {
+    layout: tileMatrix,
+    doors: [],
+  }
 }
 
-function wallsHorizontal(layout, walls) {
-  let updatedLayout = [...layout]
-  walls.forEach(wall => {
-    const [ startX, startY ] = wall[0].split(',').map(item => parseInt(item, 10))
-    const doorwayLocations = typeof wall[2] !== 'undefined' && (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]])
+function buildWalls(walls) {
+  let { layout, doors } = emptyTile()
+  const { vertical, horizontal } = walls
 
-    for (let i = 0; i < wall[1]; i++) {
-      const isDoorway = doorwayLocations && doorwayLocations.includes(i)
-      const wallType = isDoorway ? 'door' : 'wall'
-
-      if (updatedLayout[startX] && updatedLayout[startX][startY + i]) {
-        updatedLayout[startX][startY + i] = {
-          ...updatedLayout[startX][startY + i],
-          south: wallType
-        }
-      }
-      if (updatedLayout[startX + 1] && updatedLayout[startX + 1][startY + i]) {
-        updatedLayout[startX + 1][startY + i] = {
-          ...updatedLayout[startX + 1][startY + i],
-          north: wallType
-        }
-      }
-    }
-  })
-
-  return updatedLayout
-}
-
-function wallsVertical(layout, walls) {
-  let updatedLayout = [...layout]
-  walls.forEach(wall => {
+  vertical.forEach(wall => {
     const [startX, startY] = wall[0].split(',').map(item => parseInt(item, 10))
     const doorwayLocations = typeof wall[2] !== 'undefined' && (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]])
 
@@ -60,77 +37,124 @@ function wallsVertical(layout, walls) {
       const isDoorway = doorwayLocations && doorwayLocations.includes(i)
       const wallType = isDoorway ? 'door' : 'wall'
 
-      if (updatedLayout[startX + i] && updatedLayout[startX + i][startY]) {
-        updatedLayout[startX + i][startY] = {
-          ...updatedLayout[startX + i][startY],
-          east: wallType
+      if (isDoorway) {
+        let newX = startX + i >= 0 ? startX + i : 0
+        let newY = startY >= 0 ? startY : 0
+        doors.push(`${newX},${newY}`)
+      }
+
+      if (layout[startX + i] && layout[startX + i][startY]) {
+        layout[startX + i][startY] = {
+          ...layout[startX + i][startY],
+          west: wallType
         }
       }
-      if (updatedLayout[startX + i] && updatedLayout[startX + i][startY + 1]) {
-        updatedLayout[startX + i][startY + 1] = {
-          ...updatedLayout[startX + i][startY + 1],
-          west: wallType
+      if (layout[startX + i] && layout[startX + i][startY - 1]) {
+        layout[startX + i][startY - 1] = {
+          ...layout[startX + i][startY - 1],
+          east: wallType
         }
       }
     }
   })
 
-  return updatedLayout
+  horizontal.forEach(wall => {
+    const [ startX, startY ] = wall[0].split(',').map(item => parseInt(item, 10))
+    const doorwayLocations = typeof wall[2] !== 'undefined' && (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]])
+
+    for (let i = 0; i < wall[1]; i++) {
+      const isDoorway = doorwayLocations && doorwayLocations.includes(i)
+      const wallType = isDoorway ? 'door' : 'wall'
+
+      if (isDoorway) {
+        let newX = startX >= 0 ? startX : 0
+        let newY = startY + i >= 0 ? startY + i : 0
+        doors.push(`${newX},${newY}`)
+      }
+
+      if (layout[startX] && layout[startX][startY + i]) {
+        layout[startX][startY + i] = {
+          ...layout[startX][startY + i],
+          north: wallType
+        }
+      }
+      if (layout[startX - 1] && layout[startX - 1][startY + i]) {
+        layout[startX - 1][startY + i] = {
+          ...layout[startX - 1][startY + i],
+          south: wallType
+        }
+      }
+    }
+  })
+
+  return {
+    layout: layout,
+    doors: [...new Set(doors)],
+  }
 }
 
-function markRooms(layout) {
-  const bounds = ['wall', 'door']
-  const detectCorner = (cell) => {
-    if (bounds.includes(cell.north) && bounds.includes(cell.west)) {
-      return 'nw'
-    } else if (bounds.includes(cell.north) && bounds.includes(cell.east)) {
-      return 'ne'
-    } else if (bounds.includes(cell.south) && bounds.includes(cell.west)) {
-      return 'sw'
-    } else if (bounds.includes(cell.south) && bounds.includes(cell.east)) {
-      return 'se'
-    } else {
-      return false
-    }
-  }
-
-  let corners = {
-    nw: [], ne: [], sw: [], se: []
-  }
+function markRooms(tile) {
+  const { layout } = tile
+  let NWCorners = []
 
   layout.forEach((row, i) => {
     row.forEach((cell, j) => {
-      const cornerType = detectCorner(cell)
-      if (cornerType) {
-        corners[cornerType].push(`${i},${j}`)
+      const isNWCorner = cell.north !== 'open' && cell.west !== 'open'
+      if (isNWCorner) {
+        NWCorners.push(`${i},${j}`)
       }
     })
   })
 
   let updatedLayout = [...layout]
-  let roomCount = corners.nw.length
 
-  while (roomCount--) {
-    const start = corners.nw[roomCount]
-    const end = corners.se[roomCount]
-    let xIterator = parseInt(start.split(',')[0], 10)
-    const xEnd = parseInt(end.split(',')[0], 10)
-
-    while (xIterator <= xEnd) {
-      let yIterator = parseInt(start.split(',')[1], 10)
-      const yEnd = parseInt(end.split(',')[1], 10)
-      while (yIterator <= yEnd) {
-        updatedLayout[xIterator][yIterator].room = roomCount
-        yIterator++
-      }
-      xIterator++
+  const wallCrawler = (coords, roomIndex, origin = '0,0') => {
+    const x = parseInt(coords[0], 10)
+    const y = parseInt(coords[2], 10)
+    const newOrigin = `${x},${y}`
+    const cell = updatedLayout[x][y]
+    const newDirections = {
+      north: `${x - 1},${y}`,
+      east: `${x},${y + 1}`,
+      south: `${x + 1},${y}`,
+      west: `${x},${y - 1}`,
     }
+    const canGo = (direction) => {
+      const newCell = updatedLayout[newDirections[direction][0]][newDirections[direction][2]]
+
+      return (
+        !newCell.hasOwnProperty('room') &&
+        cell[direction] === 'open' &&
+        newDirections[direction] !== origin
+      )
+    }
+    const nextCoords = []
+
+    if (!cell.hasOwnProperty('room')) {
+      cell.room = roomIndex
+      if (x > 0 && canGo('north')) nextCoords.push(newDirections.north)
+      if (y < 8 && canGo('east')) nextCoords.push(newDirections.east)
+      if (x < 8 && canGo('south')) nextCoords.push(newDirections.south)
+      if (y > 0 && canGo('west')) nextCoords.push(newDirections.west)
+
+      nextCoords.forEach(nextCoord => wallCrawler(nextCoord, roomIndex, newOrigin))
+    }
+
+    return false
   }
 
-  return updatedLayout
+  NWCorners.forEach((cell, i) => {
+    wallCrawler(cell, i)
+  })
+
+  return {
+    ...tile,
+    layout: updatedLayout
+  }
 }
 
-function markStreets(layout) {
+function markStreets(tile) {
+  const { layout } = tile
   let updatedLayout = [...layout]
   const isStreet = (cell) => !cell.hasOwnProperty('room')
   const possibleStreets = [ '0,0', '0,3', '0,6', '3,0', '3,6', '6,0', '6,3', '6,6', ]
@@ -163,13 +187,18 @@ function markStreets(layout) {
     }
   }
 
-  return updatedLayout
+  return {
+    ...tile,
+    layout: updatedLayout
+  }
 }
 
-export const rotateTileCW = (template, amount = 0) => {
+export function rotateTile(tile, amount) {
+  const { layout } = tile
   const rotateCell = (cell, x, y) => {
-    const {north, east, south, west} = cell
+    const { north, east, south, west } = cell
     return {
+      ...cell,
       coords: [x, y],
       north: west,
       east: north,
@@ -178,22 +207,21 @@ export const rotateTileCW = (template, amount = 0) => {
     }
   }
 
-  let rotatedTemplate = [...template]
+  let rotatedLayout = [...layout]
 
   while (amount--) {
-    rotatedTemplate = [
-      // The `x` element of each row (in reverse order) should make up our rows
-      ...rotatedTemplate.reverse()
-      // The following iterator is named `x` because it will be the x coordinate value,
-      // and the array element is named `unused` very literally
+    rotatedLayout = [
+      ...rotatedLayout.reverse()
       // eslint-disable-next-line
-    ].map((unused, x) => {
-      // The next iterator is named `y` because it is the y coordinate value
-      return rotatedTemplate.map((row, y) => {
+    ].map((foo, x) => {
+      return rotatedLayout.map((row, y) => {
         return rotateCell(row[x], x, y)
       })
     })
   }
 
-  return rotatedTemplate
+  return {
+    doors: tile.doors,
+    layout: rotatedLayout
+  }
 }
