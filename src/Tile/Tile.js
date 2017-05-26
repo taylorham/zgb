@@ -14,8 +14,8 @@ const ROOM_COLORS = [
 ]
 const STREET_COLORS = [
   '#bbb',
-  '#aaa',
-  '#ddd'
+  '#bbb',
+  '#d3d3d3'
 ]
 const EXIT_ICONS = {
   north: 'glyphicon-arrow-up',
@@ -27,7 +27,7 @@ const EXIT_ICONS = {
 const Tile = ({ layout }) => {
   const cardinals = ['north', 'east', 'south', 'west']
   const markSidewalks = cell => {
-    // let isSidewalk = false
+    let isSidewalk = false
     let { coords: [ x, y ] } = cell
     const checkCorner = {
       nw: x > 0 && y > 0 && x % 3 === 0 && y % 3 === 0 ? `${x - 1},${y - 1}` : false,
@@ -37,15 +37,15 @@ const Tile = ({ layout }) => {
     }
     const [ isCorner ] = Object.keys(checkCorner).filter(direction => checkCorner[direction])
     if (cardinals.some((direction, i) => cell[direction] === 'wall')) {
-      // isSidewalk = true
+      isSidewalk = true
       return [STREET_COLORS[2]]
     } else if (isCorner) {
       const [ newX, newY ] = checkCorner[isCorner].split(',')
       if (cardinals.some(direction => layout[newX][newY][direction] === 'wall')) {
-        // isSidewalk = true
+        isSidewalk = true
         return [STREET_COLORS[2]]
       }
-    } else if (/*!isSidewalk && */[x, y].map(v => [2, 6].includes(v))) {
+    } else if (!isSidewalk && [x, y].map(v => [2, 6].includes(v))) {
       return markCrosswalks(cell)
     }
     return STREET_COLORS[cell.street % 2]
@@ -123,7 +123,7 @@ const Tile = ({ layout }) => {
   }
 
   return (
-    <span style={{ margin: '4px 2px', width: '762px', float: 'left' }}>
+    <span style={{ margin: '4px 1px', width: '762px', float: 'left' }}>
       {
         layout.map((row, i) => (
           <div key={`row-${i}`} style={{ margin: '-1px 0' }}>
