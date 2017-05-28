@@ -32,7 +32,7 @@ function buildWalls(walls) {
 
   vertical.forEach(wall => {
     const [startX, startY] = wall[0].split(',').map(item => parseInt(item, 10))
-    const doorwayLocations = typeof wall[2] !== 'undefined' && (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]])
+    const doorwayLocations = typeof wall[2] !== 'undefined' ? (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]]) : []
 
     for (let i = 0; i < wall[1]; i++) {
       const isDoorway = doorwayLocations && doorwayLocations.includes(i)
