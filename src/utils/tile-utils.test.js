@@ -1,5 +1,5 @@
 import { buildTile } from './tile-utils'
-import C2, { rotatedC2 } from './C2'
+import { C2, rotatedC2 } from '../Tiles/Tiles'
 
 jest.unmock('./tile-utils')
 

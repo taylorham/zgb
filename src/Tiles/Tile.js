@@ -27,7 +27,6 @@ const EXIT_ICONS = {
 const Tile = ({ layout }) => {
   const cardinals = ['north', 'east', 'south', 'west']
   const markSidewalks = cell => {
-    let isSidewalk = false
     let { coords: [ x, y ] } = cell
     const checkCorner = {
       nw: x > 0 && y > 0 && x % 3 === 0 && y % 3 === 0 ? `${x - 1},${y - 1}` : false,
@@ -37,15 +36,13 @@ const Tile = ({ layout }) => {
     }
     const [ isCorner ] = Object.keys(checkCorner).filter(direction => checkCorner[direction])
     if (cardinals.some((direction, i) => cell[direction] === 'wall')) {
-      isSidewalk = true
       return [STREET_COLORS[2]]
     } else if (isCorner) {
       const [ newX, newY ] = checkCorner[isCorner].split(',')
       if (cardinals.some(direction => layout[newX][newY][direction] === 'wall')) {
-        isSidewalk = true
         return [STREET_COLORS[2]]
       }
-    } else if (!isSidewalk && [x, y].map(v => [2, 6].includes(v))) {
+    } else if ([x, y].map(v => [2, 6].includes(v))) {
       return markCrosswalks(cell)
     }
     return STREET_COLORS[cell.street % 2]
@@ -54,23 +51,24 @@ const Tile = ({ layout }) => {
   let addToStyle = {}
 
   function markCrosswalks(cell) {
-    let { coords: [ x, y ] } = cell
-    const streetColor = STREET_COLORS[cell.street % 2]
+    let {coords: [x, y]} = cell
+    const streetColor = STREET_COLORS[0]
+    let streetBG = streetColor
 
     if ([2, 6].includes(x)) {
       addToStyle.backgroundSize = '33.3% 100%'
-      return `linear-gradient(to right, ${streetColor}, ${streetColor} 25%, #f2f2f2 25%, #f2f2f2 75%, ${streetColor} 75%)`
+      streetBG = `linear-gradient(to right, ${streetColor}, ${streetColor} 25%, #f2f2f2 25%, #f2f2f2 75%, ${streetColor} 75%)`
     } else if ([2, 6].includes(y)) {
       addToStyle.backgroundSize = '100% 33.3%'
-      return `linear-gradient(to bottom, ${streetColor}, ${streetColor} 25%, #f2f2f2 25%, #f2f2f2 75%, ${streetColor} 75%)`
+      streetBG = `linear-gradient(to bottom, ${streetColor}, ${streetColor} 25%, #f2f2f2 25%, #f2f2f2 75%, ${streetColor} 75%)`
     }
-    return streetColor
+    return streetBG
   }
 
   const renderCell = cell => {
     const bgColor = cell.hasOwnProperty('room') ? (
       ROOM_COLORS[cell.room]
-    ) : cell.hasOwnProperty('street') ? (
+    ) : !cell.hasOwnProperty('room') ? (
       markSidewalks(cell)
     ) : (
       'initial'
@@ -84,15 +82,18 @@ const Tile = ({ layout }) => {
         if (cell[key] === 'door') {
           hasExit = true
           iconClass+= ` ${ EXIT_ICONS[key] }`
+        } else if (cell.hasOwnProperty('manhole')) {
+          hasExit = true
+          iconClass+= ` glyphicon-cd`
         }
       })
       if (hasExit) {
         const iconStyle = {
-          fontSize: '16px',
+          fontSize: '36px',
           color: '#333',
           position: 'absolute',
-          top: 'calc(50% - 8px)',
-          left: 'calc(50% - 8px)',
+          top: 'calc(50% - 18px)',
+          left: 'calc(50% - 18px)',
         }
         return <i className={iconClass} style={iconStyle} />
       }

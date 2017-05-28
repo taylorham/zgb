@@ -1,5 +1,5 @@
 export const buildTile = (walls, rotation = 0) => {
-  return markStreets(markRooms(rotateTile(buildWalls(walls), rotation)))
+  return colorStreets(markRooms(rotateTile(buildWalls(walls), rotation)))
 }
 
 function emptyTile() {
@@ -28,6 +28,7 @@ function emptyTile() {
 function buildWalls(walls) {
   let { layout, doors } = emptyTile()
   const { vertical, horizontal } = walls
+  const manhole = walls.manhole.split(',').map(num => parseInt(num, 10))
 
   vertical.forEach(wall => {
     const [startX, startY] = wall[0].split(',').map(item => parseInt(item, 10))
@@ -87,6 +88,8 @@ function buildWalls(walls) {
     }
   })
 
+  layout[manhole[0]][manhole[1]].manhole = true
+
   return {
     layout: layout,
     doors: [...new Set(doors)],
@@ -108,43 +111,45 @@ function markRooms(tile) {
 
   let updatedLayout = [...layout]
 
-  const wallCrawler = (coords, roomIndex, origin = '0,0') => {
+  const tileCrawler = ({ coords = '0,0', roomIndex = 0, origin = '0,0' } = {}) => {
     const x = parseInt(coords[0], 10)
     const y = parseInt(coords[2], 10)
-    const newOrigin = `${x},${y}`
+
+    const newOrigin = [x, y]
+
     const cell = updatedLayout[x][y]
-    const newDirections = {
-      north: `${x - 1},${y}`,
-      east: `${x},${y + 1}`,
-      south: `${x + 1},${y}`,
-      west: `${x},${y - 1}`,
+    const nextCell = {
+      north: [x - 1, y],
+      east: [x, y + 1],
+      south: [x + 1, y],
+      west: [x, y - 1],
     }
     const canGo = (direction) => {
-      const newCell = updatedLayout[newDirections[direction][0]][newDirections[direction][2]]
+      const newCell = updatedLayout[nextCell[direction][0]][nextCell[direction][1]]
 
       return (
         !newCell.hasOwnProperty('room') &&
         cell[direction] === 'open' &&
-        newDirections[direction] !== origin
+        nextCell[direction] !== origin
       )
     }
     const nextCoords = []
 
     if (!cell.hasOwnProperty('room')) {
       cell.room = roomIndex
-      if (x > 0 && canGo('north')) nextCoords.push(newDirections.north)
-      if (y < 8 && canGo('east')) nextCoords.push(newDirections.east)
-      if (x < 8 && canGo('south')) nextCoords.push(newDirections.south)
-      if (y > 0 && canGo('west')) nextCoords.push(newDirections.west)
+      if (x > 0 && canGo('north')) nextCoords.push(nextCell.north)
+      if (y < 8 && canGo('east')) nextCoords.push(nextCell.east)
+      if (x < 8 && canGo('south')) nextCoords.push(nextCell.south)
+      if (y > 0 && canGo('west')) nextCoords.push(nextCell.west)
 
-      nextCoords.forEach(nextCoord => wallCrawler(nextCoord, roomIndex, newOrigin))
+      nextCoords.forEach(nextCoord => tileCrawler({ coords: nextCoord.join(','), roomIndex, origin: newOrigin.join(',') }))
     }
 
     return false
   }
 
   NWCorners.forEach((cell, i) => {
-    wallCrawler(cell, i)
+    tileCrawler({ coords: cell, roomIndex: i })
   })
 
   return {
@@ -153,15 +158,15 @@ function markRooms(tile) {
   }
 }
 
-function markStreets(tile) {
+function colorStreets(tile) {
   const { layout } = tile
   let updatedLayout = [...layout]
-  const isStreet = (cell) => !cell.hasOwnProperty('room')
+  const isStreet = (cell) => cell.hasOwnProperty('street') && cell.street === true
   const possibleStreets = [ '0,0', '0,3', '0,6', '3,0', '3,6', '6,0', '6,3', '6,6', ]
   let actualStreets = []
 
   possibleStreets.forEach(coords => {
-    const [ x, , y ] = coords
+    const [ x,, y ] = coords
     if (isStreet(layout[x][y])) {
       actualStreets.push(coords)
     }
@@ -170,17 +175,17 @@ function markStreets(tile) {
   let streetCount = actualStreets.length
 
   while (streetCount--) {
-    const start = actualStreets[streetCount]
-    const end = actualStreets[streetCount].split(',').map(num => parseInt(num, 10) + 2).join(',')
-    let xIterator = parseInt(start.split(',')[0], 10)
-    const xEnd = parseInt(end.split(',')[0], 10)
+    const start = actualStreets[streetCount].split(',').map(num => parseInt(num, 10))
+    const end = actualStreets[streetCount].split(',').map(num => parseInt(num, 10) + 2)
+    let xIterator = start[0]
+    const xEnd = end[0]
 
     while (xIterator <= xEnd) {
-      let yIterator = parseInt(start.split(',')[1], 10)
-      const yEnd = parseInt(end.split(',')[1], 10)
+      let yIterator = start[1]
+      const yEnd = end[1]
 
       while (yIterator <= yEnd) {
-        updatedLayout[xIterator][yIterator].street = streetCount
+        updatedLayout[xIterator][yIterator].street = true
         yIterator++
       }
       xIterator++
@@ -221,7 +226,7 @@ export function rotateTile(tile, amount) {
   }
 
   return {
-    doors: tile.doors,
+    ...tile,
     layout: rotatedLayout
   }
 }
