@@ -26,8 +26,16 @@ const EXIT_ICONS = {
 
 const Tile = ({ layout }) => {
   const cardinals = ['north', 'east', 'south', 'west']
+
+  const modCoords = (cell) => {
+    const { coords: [ originalX, originalY ]} = cell
+    return {
+      x: originalX - (Math.floor(originalX / 9) * 9),
+      y: originalY - (Math.floor(originalY / 9) * 9)
+    }
+  }
   const markSidewalks = cell => {
-    let { coords: [ x, y ] } = cell
+    const { x, y } = modCoords(cell)
     const checkCorner = {
       nw: x > 0 && y > 0 && x % 3 === 0 && y % 3 === 0 ? `${x - 1},${y - 1}` : false,
       ne: x > 0 && y < 8 && x % 3 === 0 && y % 3 === 2 ? `${x - 1},${y + 1}` : false,
@@ -51,7 +59,7 @@ const Tile = ({ layout }) => {
   let addToStyle = {}
 
   function markCrosswalks(cell) {
-    let {coords: [x, y]} = cell
+    const { x, y } = modCoords(cell)
     const streetColor = STREET_COLORS[0]
     let streetBG = streetColor
 

@@ -1,38 +1,41 @@
-export const buildTile = (walls, rotation = 0) => {
-  return colorStreets(markRooms(rotateTile(buildWalls(walls), rotation)))
+export const buildTile = (tileCoords, layout) => {
+  const { tile, rotation, doors } = layout
+  return colorStreets(markRooms(rotateTile(buildWalls(tileCoords, {tile, doors}), rotation)))
 }
 
-function emptyTile() {
-  let tileMatrix = []
+function emptyTile(tileCoords) {
+  const [ tileX, tileY ] = tileCoords
+  let layout = []
 
   for (let i = 0; i < 9; i++) {
     let tileRow = []
     for (let j = 0; j < 9; j++) {
       tileRow.push({
-        coords: [i, j],
+        coords: [(tileX * 9) + i, (tileY * 9) + j],
         north: 'open',
         east: 'open',
         south: 'open',
         west: 'open',
       })
     }
-    tileMatrix.push(tileRow)
+    layout.push(tileRow)
   }
 
   return {
-    layout: tileMatrix,
-    doors: [],
+    layout,
+    tileCoords,
   }
 }
 
-function buildWalls(walls) {
-  let { layout, doors } = emptyTile()
-  const { vertical, horizontal } = walls
-  const manhole = walls.manhole.split(',').map(num => parseInt(num, 10))
+function buildWalls(tileCoords, walls) {
+  let { layout } = emptyTile(tileCoords)
+  const doors = new Set()
+  const { tile: { vertical, horizontal, manhole: manholeCoords }, doors: lockedDoors } = walls
+  const manhole = manholeCoords.split(',').map(num => parseInt(num, 10))
 
   vertical.forEach(wall => {
     const [startX, startY] = wall[0].split(',').map(item => parseInt(item, 10))
-    const doorwayLocations = typeof wall[2] !== 'undefined' ? (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]]) : []
+    const doorwayLocations = typeof wall[2] !== 'undefined' && (Array.isArray(wall[2]) ? [...wall[2]] : [wall[2]])
 
     for (let i = 0; i < wall[1]; i++) {
       const isDoorway = doorwayLocations && doorwayLocations.includes(i)
@@ -41,7 +44,7 @@ function buildWalls(walls) {
       if (isDoorway) {
         let newX = startX + i >= 0 ? startX + i : 0
         let newY = startY >= 0 ? startY : 0
-        doors.push(`${newX},${newY}`)
+        doors.add(`${newX},${newY}`)
       }
 
       if (layout[startX + i] && layout[startX + i][startY]) {
@@ -70,7 +73,7 @@ function buildWalls(walls) {
       if (isDoorway) {
         let newX = startX >= 0 ? startX : 0
         let newY = startY + i >= 0 ? startY + i : 0
-        doors.push(`${newX},${newY}`)
+        doors.add(`${newX},${newY}`)
       }
 
       if (layout[startX] && layout[startX][startY + i]) {
@@ -88,11 +91,17 @@ function buildWalls(walls) {
     }
   })
 
+  lockedDoors.forEach(lockedDoor => {
+    let [ doorX, doorY ] = lockedDoor.split(',').map(num => parseInt(num, 10))
+    layout[doorX][doorY].lockedDoor = true
+  })
+
   layout[manhole[0]][manhole[1]].manhole = true
 
   return {
-    layout: layout,
-    doors: [...new Set(doors)],
+    layout,
+    tileCoords,
+    doors: [...doors],
   }
 }
 
@@ -199,7 +208,7 @@ function colorStreets(tile) {
 }
 
 export function rotateTile(tile, amount) {
-  const { layout } = tile
+  const { layout, tileCoords: [ tileX, tileY ] } = tile
   const rotateCell = (cell, x, y) => {
     const { north, east, south, west } = cell
     return {
@@ -220,7 +229,7 @@ export function rotateTile(tile, amount) {
       // eslint-disable-next-line
     ].map((foo, x) => {
       return rotatedLayout.map((row, y) => {
-        return rotateCell(row[x], x, y)
+        return rotateCell(row[x], x + (tileX * 9), y + (tileY * 9))
       })
     })
   }
