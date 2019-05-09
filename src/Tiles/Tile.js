@@ -6,48 +6,56 @@ const BORDER_COLORS = {
   wall: '#333',
   door: '#37f',
 }
-const ROOM_COLORS = [
-  '#dfd',
-  '#dff',
-  '#ffd',
-  '#fdd',
-]
-const STREET_COLORS = [
-  '#bbb',
-  '#bbb',
-  '#d3d3d3'
-]
+const ROOM_COLORS = ['#dfd', '#dff', '#ffd', '#fdd']
+const STREET_COLORS = ['#bbb', '#bbb', '#d3d3d3']
 const EXIT_ICONS = {
   north: 'glyphicon-arrow-up',
   east: 'glyphicon-arrow-right',
   south: 'glyphicon-arrow-down',
   west: 'glyphicon-arrow-left',
 }
+const CARDINALS = ['north', 'east', 'south', 'west']
 
-const Tile = ({ layout }) => {
-  const cardinals = ['north', 'east', 'south', 'west']
-
-  const modCoords = (cell) => {
-    const { coords: [ originalX, originalY ]} = cell
+export const Tile = ({ layout }) => {
+  const modCoords = cell => {
+    const {
+      coords: [originalX, originalY],
+    } = cell
     return {
-      x: originalX - (Math.floor(originalX / 9) * 9),
-      y: originalY - (Math.floor(originalY / 9) * 9)
+      x: originalX - Math.floor(originalX / 9) * 9,
+      y: originalY - Math.floor(originalY / 9) * 9,
     }
   }
   const markSidewalks = cell => {
     const { x, y } = modCoords(cell)
     const checkCorner = {
-      nw: x > 0 && y > 0 && x % 3 === 0 && y % 3 === 0 ? `${x - 1},${y - 1}` : false,
-      ne: x > 0 && y < 8 && x % 3 === 0 && y % 3 === 2 ? `${x - 1},${y + 1}` : false,
-      sw: x < 8 && y > 0 && x % 3 === 2 && y % 3 === 0 ? `${x + 1},${y - 1}` : false,
-      se: x < 8 && y < 8 && x % 3 === 2 && y % 3 === 2 ? `${x + 1},${y + 1}` : false,
+      nw:
+        x > 0 && y > 0 && x % 3 === 0 && y % 3 === 0
+          ? `${x - 1},${y - 1}`
+          : false,
+      ne:
+        x > 0 && y < 8 && x % 3 === 0 && y % 3 === 2
+          ? `${x - 1},${y + 1}`
+          : false,
+      sw:
+        x < 8 && y > 0 && x % 3 === 2 && y % 3 === 0
+          ? `${x + 1},${y - 1}`
+          : false,
+      se:
+        x < 8 && y < 8 && x % 3 === 2 && y % 3 === 2
+          ? `${x + 1},${y + 1}`
+          : false,
     }
-    const [ isCorner ] = Object.keys(checkCorner).filter(direction => checkCorner[direction])
-    if (cardinals.some((direction, i) => cell[direction] === 'wall')) {
+    const [isCorner] = Object.keys(checkCorner).filter(
+      direction => checkCorner[direction]
+    )
+    if (CARDINALS.some(direction => cell[direction] === 'wall')) {
       return [STREET_COLORS[2]]
     } else if (isCorner) {
-      const [ newX, newY ] = checkCorner[isCorner].split(',')
-      if (cardinals.some(direction => layout[newX][newY][direction] === 'wall')) {
+      const [newX, newY] = checkCorner[isCorner].split(',')
+      if (
+        CARDINALS.some(direction => layout[newX][newY][direction] === 'wall')
+      ) {
         return [STREET_COLORS[2]]
       }
     } else if ([x, y].map(v => [2, 6].includes(v))) {
@@ -74,13 +82,11 @@ const Tile = ({ layout }) => {
   }
 
   const renderCell = cell => {
-    const bgColor = cell.hasOwnProperty('room') ? (
-      ROOM_COLORS[cell.room]
-    ) : !cell.hasOwnProperty('room') ? (
-      markSidewalks(cell)
-    ) : (
-      'initial'
-    )
+    const bgColor = cell.hasOwnProperty('room')
+      ? ROOM_COLORS[cell.room]
+      : !cell.hasOwnProperty('room')
+      ? markSidewalks(cell)
+      : 'initial'
 
     let hasExit = false
     const renderIcon = () => {
@@ -89,10 +95,10 @@ const Tile = ({ layout }) => {
       Object.keys(cell).forEach(key => {
         if (cell[key] === 'door') {
           hasExit = true
-          iconClass+= ` ${ EXIT_ICONS[key] }`
+          iconClass += ` ${EXIT_ICONS[key]}`
         } else if (cell.hasOwnProperty('manhole')) {
           hasExit = true
-          iconClass+= ` glyphicon-cd`
+          iconClass += ` glyphicon-cd`
         }
       })
       if (hasExit) {
@@ -108,8 +114,8 @@ const Tile = ({ layout }) => {
       return null
     }
     const style = {
-      padding: `${ CELL_SIZE * .39 }px ${ CELL_SIZE * .49 }px`,
-      lineHeight: `${ CELL_SIZE }px`,
+      padding: `${CELL_SIZE * 0.39}px ${CELL_SIZE * 0.49}px`,
+      lineHeight: `${CELL_SIZE}px`,
       maxWidth: CELL_SIZE,
       maxHeight: CELL_SIZE,
       position: 'relative',
@@ -122,26 +128,22 @@ const Tile = ({ layout }) => {
       ...addToStyle,
     }
     return (
-      <span key={`col-${ cell.coords[1] }`} style={style}>
-         <span style={{ fontSize: '1px', color: 'rgba(255,255,255,0)' }}>
-           { '.' }
-           { renderIcon() }
-         </span>
+      <span key={`col-${cell.coords[1]}`} style={style}>
+        <span style={{ fontSize: '1px', color: 'rgba(255,255,255,0)' }}>
+          {'.'}
+          {renderIcon()}
+        </span>
       </span>
     )
   }
 
   return (
     <span style={{ margin: '4px 1px', width: '762px', float: 'left' }}>
-      {
-        layout.map((row, i) => (
-          <div key={`row-${i}`} style={{ margin: '-1px 0' }}>
-            { row.map(renderCell) }
-          </div>
-        ))
-      }
+      {layout.map((row, i) => (
+        <div key={`row-${i}`} style={{ margin: '-1px 0' }}>
+          {row.map(renderCell)}
+        </div>
+      ))}
     </span>
   )
 }
-
-export default Tile

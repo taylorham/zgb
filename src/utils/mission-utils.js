@@ -1,6 +1,6 @@
 import { buildTile } from './tile-utils'
 
-export const buildMission = (mission) => {
+export const buildMission = mission => {
   let gridLengthX = mission.layout.length
   let missionLayout = []
 
@@ -14,13 +14,13 @@ export const buildMission = (mission) => {
     tileRow.forEach((tile, tileY) => {
       const builtTile = buildTile([tileX, tileY], tile)
       builtTile.layout.forEach((gridRow, gridX) => {
-        missionLayout[gridX + (tileX * 9)].push(...gridRow)
+        missionLayout[gridX + tileX * 9].push(...gridRow)
       })
     })
   })
 
   return {
-    layout: missionLayout
+    layout: missionLayout,
   }
 }
 
@@ -72,6 +72,6 @@ export const pathfinder = (origin, targets) => {
   // the first room from the shortest array as the room to move a zombie to.
 }
 
-export const missionMarkers = (layout) => {
+export const missionMarkers = layout => {
   // TODO: Once `markStreets` is implemented, lay down mission markers
 }
